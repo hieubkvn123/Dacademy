@@ -144,13 +144,16 @@ def visualize_svm_model(X, Y, lambda_ = 0.5, iterations=20, lr=0.01):
     ax2.plot_surface(x_, y_, z_, color='blue', alpha=0.5)
 
     for i in range(iterations):
+        # Plot the progress of gradient descent
+        loss = HingeLoss((weights, bias))
+        ax2.scatter3D(weights[0], weights[1], loss, color='red')
+
         gradients = gradient((weights, bias))
         gradient_weights = gradients[0]
         gradient_bias = gradients[1]
         weights -= lr * gradient_weights
         bias -= lr * gradient_bias
 
-        loss = HingeLoss((weights, bias))
         print('Iter#', i+1, ' Weights : ', weights, ' Bias : ', bias, ' Loss : ', loss)
 
         # Create meshgrid for the current weights
@@ -167,8 +170,6 @@ def visualize_svm_model(X, Y, lambda_ = 0.5, iterations=20, lr=0.01):
             cluster = X[Y == class_]
             ax.scatter(cluster[:, 0], cluster[:, 1])
         
-        ax2.scatter3D(weights[0], weights[1], loss, color='red')
-
         filename = f'media/{i+1}.png'
         plt.savefig(filename)
         filenames.append(filename)
