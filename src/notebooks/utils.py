@@ -180,3 +180,84 @@ def visualize_svm_model(X, Y, lambda_ = 0.5, iterations=20, lr=0.01):
     print(accuracy_score(prediction, Y))
     make_gif(filenames)
     print('[INFO] Visualizing regression model completed!')
+
+import autograd.numpy as anp
+from autograd import grad
+
+def visualize_tsne_model(original_dim=4, new_dim=2, samples_per_class=10, perplexity=6, iterations=20):
+    cluster_1 = anp.random.normal(loc=0.0, size=(samples_per_class, original_dim))
+    cluster_2 = anp.random.normal(loc=3.0, size=(samples_per_class, original_dim))
+    cluster_3 = anp.random.normal(loc=5.0, size=(samples_per_class, original_dim))
+
+    classes = anp.concatenate([
+        anp.ones((samples_per_class, )) * 0,
+        anp.ones((samples_per_class, )) * 1,
+        anp.ones((samples_per_class, )) * 2
+    ])
+    X = anp.concatenate([cluster_1, cluster_2, cluster_3])
+    weights = anp.identity(original_dim)[:new_dim].transpose().astype('float64') # identity initialization
+    
+    def conditional_p(X_i, X_j):
+        if((X_i - X_j).sum() == 0) : return 0
+        numerator = anp.exp((-(anp.linalg.norm(X_i - X_j))**2)/(2 * perplexity))
+        denom = anp.exp((-(X_i - X) ** 2).sum(axis=1) / (2 * perplexity))
+        mask = (X != X_i).astype(int).mean(axis=1)
+        denom = anp.multiply(denom, mask).sum()
+        return numerator/denom
+
+    def P_ij(X_i, X_j):
+        return (conditional_p(X_i, X_j) + conditional_p(X_j, X_i)) / (2*len(X))
+    
+    def _q_ij(Y_i, Y_j):
+        if((Y_i - Y_j).sum() == 0) : return 0
+        return (1 + ((Y_i - Y_j) ** 2).sum()) ** -1
+        
+    def Q_ij(denominator):
+        def q_ij(Y_i, Y_j):
+            numerator = _q_ij(Y_i, Y_j)
+
+            return numerator/denominator
+        return q_ij
+
+    def TSNE_Loss(params):
+        weights = params[0]
+        Y = X @ weights
+        
+        # Compute similarity probability distribution of high dimension X
+        Y_denom = 0
+        for i in range(len(Y)):
+            for j in range(len(Y)):
+                Y_denom += _q_ij(Y[i], Y[j])
+        
+        kl_divergence = 0
+        for i in range(len(X)):
+            for j in range(len(X)):
+                p_ij = P_ij(X[i], X[j])
+                q_ij = Q_ij(Y_denom)(Y[i], Y[j])
+                
+                if(q_ij != 0):
+                    kl_divergence += p_ij * anp.log(p_ij / q_ij)
+                
+        return kl_divergence
+    
+    gradient = grad(TSNE_Loss)
+    
+    filenames = []
+    fig, ax = plt.subplots()
+    for i in range(iterations):
+        Y = X @ weights
+        ax.clear()
+        for _class in anp.unique(classes):
+            cluster = Y[classes == _class]
+            ax.scatter(cluster[:,0], cluster[:, 1])
+
+        filename = f'media/{i+1}.png'
+        filenames.append(filename)
+        plt.savefig(filename)
+        loss = TSNE_Loss((weights,))
+        gradient_weights = gradient((weights,))[0]
+        weights -= 1 * gradient_weights
+        
+        print('Iteration ', i + 1, ' Loss = ', loss)
+       
+    make_gif(filenames) 
