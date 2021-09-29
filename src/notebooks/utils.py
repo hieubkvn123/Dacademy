@@ -71,9 +71,20 @@ def visualize_linear_reg(model='linear', alpha=0.1, iterations=100, lr=0.01):
     make_gif(filenames)
     print('[INFO] Visualizing regression model completed!')
 
-def visualize_knn_model(X, Y, k=5):
+
+### Function to create sample fake dataset ###
+def create_normal_samples(mean_1=0.0, mean_2=2.0, samples_per_classes=100):
+    X = np.concatenate([
+        np.random.normal(loc=mean_1, size=(samples_per_classes, 2)), 
+        np.random.normal(loc=mean_2, size=(samples_per_classes, 2))
+    ])
+    Y = np.concatenate([np.ones(100,), np.zeros(100,)])
+
+    return X, Y
+
+def visualize_knn_model(X, Y, k=5, loc=1.5):
     colors = ['blue', 'red']
-    test = np.random.normal(loc=1.5, size=(1,2))
+    test = np.random.normal(loc=loc, size=(1,2))
     dist = cdist(X, test)
     
     # Sort the distance and get the index of top k shortest distances
